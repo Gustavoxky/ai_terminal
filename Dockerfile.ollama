@@ -1,0 +1,11 @@
+# Etapa base com imagem oficial do Ollama
+FROM ollama/ollama:latest
+
+# Copia o script de entrada corrigido
+COPY entrypoint.sh /entrypoint.sh
+
+# Dá permissão de execução ao script
+RUN chmod +x /entrypoint.sh
+
+# Usa o script como entrypoint
+ENTRYPOINT ["/entrypoint.sh"]

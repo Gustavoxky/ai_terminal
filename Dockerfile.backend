@@ -1,0 +1,21 @@
+# Etapa de build com imagem Rust atualizada
+FROM rust:latest AS builder
+
+WORKDIR /app
+COPY . /app
+
+# Instala as dependências e compila
+RUN apt-get update && apt-get install -y libudev-dev pkg-config libssl-dev && \
+    cargo build --release
+
+# Etapa final com imagem enxuta
+FROM debian:bookworm-slim
+
+# Instala runtime necessário
+RUN apt-get update && apt-get install -y libudev1 libssl3 && rm -rf /var/lib/apt/lists/*
+
+# Copia binário compilado
+COPY --from=builder /app/target/release/warp_like_terminal /usr/local/bin/backend
+
+EXPOSE 3030
+CMD ["backend"]
