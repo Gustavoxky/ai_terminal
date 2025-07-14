@@ -72,6 +72,8 @@ pub async fn handle_ai_request(
             "Explique a seguinte saída do comando '{}':\n\n{}",
             body.prompt, output
         )
+    } else if body.prompt.trim().to_lowercase().starts_with("complete este comando:") {
+        body.prompt.clone()
     } else {
         format!("Explique o comando: {}", body.prompt)
     };
@@ -100,18 +102,27 @@ pub async fn handle_ai_request(
 
                 // Tenta extrair o comando de dentro de bloco markdown
                 let re = Regex::new(r"```(?:bash)?\n([\s\S]*?)```").unwrap();
-                let extracted = re.captures(full)
+                let extracted = re
+                    .captures(full)
                     .and_then(|caps| caps.get(1))
                     .map(|m| m.as_str().trim().lines().next().unwrap_or(""))
                     .unwrap_or("");
 
+                // Autocomplete: envia o comando extraído como sugestão pura
+                let resposta_final = if body.prompt.to_lowercase().starts_with("complete este comando:") {
+                    extracted.to_string()
+                } else {
+                    full.to_string()
+                };
+
+                // Envia sugestão para o terminal se for comando puro
                 if !extracted.is_empty() && body.output.is_none() {
                     if let Some(sender) = &*tx.lock().unwrap() {
                         let _ = sender.send(extracted.to_string());
                     }
                 }
 
-                Ok(warp::reply::json(&serde_json::json!({ "response": full })))
+                Ok(warp::reply::json(&serde_json::json!({ "response": resposta_final })))
             }
             Err(err) => {
                 eprintln!("[AI] Erro ao interpretar JSON da resposta: {}", err);

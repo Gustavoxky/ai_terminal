@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { LogBlock } from './components/types'
 import { useTerminalSession } from './components/hooks/useTerminalSession'
@@ -24,6 +24,7 @@ export default function TerminalPage() {
   const [historicoIA, setHistoricoIA] = useState<string[]>([])
   const [favoritos, setFavoritos] = useState<string[]>([])
   const [modoInput, setModoInput] = useState<'terminal' | 'ia'>('terminal')
+  const [sugestaoAutoComplete, setSugestaoAutoComplete] = useState<string | null>(null)
 
   const logs = logsPorSessao[sessaoAtiva] || []
   const setLogs = (fn: (prev: LogBlock[]) => LogBlock[]) => {
@@ -40,6 +41,7 @@ export default function TerminalPage() {
     setHistory(prev => [...prev, input])
     setHistoryIndex(null)
     setCmd('')
+    setSugestaoAutoComplete(null)
     setLogs(prev => [...prev, {
       id: uuidv4(),
       command: input,
@@ -87,6 +89,10 @@ export default function TerminalPage() {
   const handleKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       sendCommand(cmd)
+    } else if ((e.key === 'Tab' || e.key === 'ArrowRight') && sugestaoAutoComplete?.startsWith(cmd)) {
+      e.preventDefault()
+      setCmd(sugestaoAutoComplete)
+      setSugestaoAutoComplete(null)
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
       if (history.length > 0) {
@@ -147,6 +153,31 @@ export default function TerminalPage() {
     setFavoritos(prev => [...new Set([...prev, command])])
   }
 
+  useEffect(() => {
+    if (!cmd.trim()) return setSugestaoAutoComplete(null)
+
+    const timeout = setTimeout(async () => {
+      try {
+        const res = await fetch('http://localhost:3030/ai', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: `Complete este comando: ${cmd}` })
+        })
+        const json = await res.json()
+        const resposta = json.response?.trim()
+        if (resposta?.toLowerCase().startsWith(cmd.toLowerCase())) {
+          setSugestaoAutoComplete(resposta)
+        } else {
+          setSugestaoAutoComplete(null)
+        }
+      } catch {
+        setSugestaoAutoComplete(null)
+      }
+    }, 400)
+
+    return () => clearTimeout(timeout)
+  }, [cmd])
+
   return (
     <div
       className="grid grid-cols-[4fr_1fr] grid-rows-[1fr] min-h-screen bg-black text-green-400 font-mono"
@@ -159,14 +190,13 @@ export default function TerminalPage() {
             <div key={s} className="relative group">
               <button
                 onClick={() => setSessaoAtiva(s)}
-                className={`px-2 py-1 text-sm rounded pr-6 transition duration-200 ${s === sessaoAtiva
+                className={`px-2 py-1 text-sm rounded pr-12 transition duration-200 ${s === sessaoAtiva
                   ? 'bg-zinc-900 text-white'
                   : 'bg-black text-gray-400 hover:bg-zinc-900 hover:text-white'
                   }`}
               >
                 Sessão {s.slice(0, 5)}
               </button>
-
               {s !== 'default' && (
                 <button
                   onClick={() => {
@@ -176,20 +206,17 @@ export default function TerminalPage() {
                       delete novo[s]
                       return novo
                     })
-
-                    // se estava ativa, voltar pra default
                     if (sessaoAtiva === s) {
                       setSessaoAtiva('default')
                     }
                   }}
-                  className="absolute top-1/2 w-[24px] h-[24px] ml-[20px] right-1 -translate-y-1/2 px-1 text-xs text-gray-400 hover:bg-zinc-600 rounded"
+                  className="absolute top-1/2 w-[24px] h-[24px] right-1 -translate-y-1/2 px-1 text-xs text-gray-400 hover:bg-zinc-800 rounded"
                 >
-                  x
+                  ✕
                 </button>
               )}
             </div>
           ))}
-
           <button
             onClick={() => {
               const novaSessao = uuidv4()
@@ -220,7 +247,6 @@ export default function TerminalPage() {
           </div>
         </div>
 
-        {/* Terminal Input (acima dos botões) */}
         {modoInput === 'terminal' && (
           <div className="fixed bottom-[5vh] left-0 w-[80%] px-4 py-2 bg-black z-40">
             <TerminalInput
@@ -228,12 +254,12 @@ export default function TerminalPage() {
               cwd={cwd}
               onChange={setCmd}
               onKeyDown={handleKey}
+              autoCompleteSugestao={sugestaoAutoComplete}
             />
           </div>
         )}
       </div>
 
-      {/* Sidebar */}
       <div style={{ gridArea: 'sidebar' }} className="w-full flex h-screen flex-col overflow-y-auto p-4 scrollbar-thin">
         <SidebarPanel
           iaHistorico={historicoIA}
@@ -244,9 +270,7 @@ export default function TerminalPage() {
         />
       </div>
 
-      {/* Painéis fixos: IA Panel + Botões */}
       <div className="fixed bottom-0 left-0 w-[80%]">
-        {/* IA Panel logo acima dos botões */}
         {modoInput === 'ia' && (
           <div className="fixed bottom-[5vh] left-0 w-[80%] px-4 py-2 bg-black z-40">
             <TerminalLLMPanel
@@ -266,7 +290,6 @@ export default function TerminalPage() {
           </div>
         )}
 
-        {/* Rodapé fixo ocupando 5% da tela */}
         <div className="h-[5vh] w-full bg-black flex items-center gap-2 px-4 z-50">
           <button
             className={`px-3 py-1 rounded text-sm ${modoInput === 'terminal' ? 'bg-zinc-700 text-white' : 'bg-black text-gray-400 hover:bg-gray-800'}`}
@@ -282,7 +305,6 @@ export default function TerminalPage() {
           </button>
         </div>
       </div>
-    </div >
+    </div>
   )
-
 }

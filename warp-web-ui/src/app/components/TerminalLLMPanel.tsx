@@ -22,7 +22,7 @@ export default function TerminalLLMPanel({
             <div className="flex">
                 <input
                     type="text"
-                    className="flex-1 bg-zinc-800 outline-none"
+                    className="flex-1 bg-zinc-900 pl-2 rounded outline-none"
                     placeholder="pergunte ao agent..."
                     value={llmPrompt}
                     onChange={(e) => onPromptChange(e.target.value)}
