@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import SyntaxHighlighter from 'react-syntax-highlighter'
-import { atomOneDark } from 'react-syntax-highlighter/dist/cjs/styles/hljs'
+import { atomOneDark } from 'react-syntax-highlighter/dist/esm/styles/hljs'
 
 interface SidebarPanelProps {
     iaHistorico: string[]
@@ -42,7 +42,7 @@ export default function SidebarPanel({
             {/* 📜 Histórico da IA */}
             <section>
                 <h2 className="text-green-400 text-sm font-bold mb-2">📜 Histórico da IA</h2>
-                <div className="text-sm space-y-2 max-h-40 overflow-y-auto">
+                <div className="text-sm space-y-2 line-clamp-5 overflow-hidden">
                     {iaHistorico.map((msg, idx) => (
                         <div key={idx} className="text-gray-300 border-b border-gray-600 pb-1">{msg}</div>
                     ))}
@@ -52,10 +52,10 @@ export default function SidebarPanel({
             {/* ⭐ Comandos Favoritos */}
             <section>
                 <h2 className="text-yellow-400 text-sm font-bold mb-2">⭐ Favoritos</h2>
-                <ul className="space-y-1 text-sm">
+                <ul className="space-y-1 text-sm overflow-hidden max-h-32">
                     {favoritos.map((cmd, idx) => (
                         <li key={idx} className="flex justify-between items-center">
-                            <span className="text-blue-300 truncate">{cmd}</span>
+                            <span className="text-blue-300 overflow-hidden text-ellipsis whitespace-nowrap max-w-[150px] block">{cmd}</span>
                             <button onClick={() => onExecutar(cmd)} className="text-green-500 text-xs hover:underline">Executar</button>
                         </li>
                     ))}
@@ -65,17 +65,27 @@ export default function SidebarPanel({
             {/* 📄 Último Output formatado */}
             <section>
                 <h2 className="text-purple-400 text-sm font-bold mb-2">📄 Última Saída</h2>
-                <div className="text-xs max-h-32 overflow-y-auto">
-                    <SyntaxHighlighter language="bash" style={atomOneDark} customStyle={{ background: 'transparent' }}>
+                <div className="text-xs overflow-hidden max-h-32">
+                    <SyntaxHighlighter
+                        language="bash"
+                        style={atomOneDark}
+                        customStyle={{
+                            background: 'transparent',
+                            overflow: 'hidden',
+                            maxHeight: '8rem',
+                            textOverflow: 'ellipsis'
+                        }}
+                    >
                         {ultimoOutput || 'Nenhuma saída disponível.'}
                     </SyntaxHighlighter>
                 </div>
+
             </section>
 
             {/* 📁 Arquivos no diretório atual */}
             <section>
                 <h2 className="text-cyan-400 text-sm font-bold mb-2">📁 {cwd}</h2>
-                <ul className="text-sm space-y-1 max-h-32 overflow-y-auto">
+                <ul className="text-sm space-y-1 overflow-hidden max-h-32 line-clamp-4">
                     {arquivos.map((file, idx) => (
                         <li key={idx} className="text-gray-300">{file}</li>
                     ))}

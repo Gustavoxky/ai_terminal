@@ -1,7 +1,7 @@
 'use client'
 
 import SyntaxHighlighter from 'react-syntax-highlighter'
-import { atomOneDark } from 'react-syntax-highlighter/dist/cjs/styles/hljs'
+import { atomOneDark } from 'react-syntax-highlighter/dist/esm/styles/hljs'
 import { LogBlock } from './types'
 
 interface TerminalLogProps {
@@ -22,7 +22,7 @@ export default function TerminalLog({
     onFavoritar,
 }: TerminalLogProps) {
     return (
-        <div className="bg-zinc-900 p-2 rounded border border-gray-700">
+        <div className="bg-zinc-900 p-4 w-3xl break-words whitespace-pre-wrap rounded-4xl border border-gray-700">
             {log.command && (
                 <div className="flex justify-between items-center text-white mb-1">
                     <span>➜ {log.command}</span>

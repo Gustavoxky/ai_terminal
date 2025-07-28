@@ -6,8 +6,10 @@ import { LogBlock } from './components/types'
 import { useTerminalSession } from './components/hooks/useTerminalSession'
 import TerminalLog from './components/TerminalLog'
 import TerminalInput from './components/TerminalInput'
-import TerminalLLMPanel from './components/TerminalLLMPanel'
 import SidebarPanel from './components/SidebarPanel'
+import { BrainCog, LayoutPanelLeft, Plus, Terminal, X } from 'lucide-react'
+import TerminalLLMOutputPanel from './components/TerminalLLMOutputPanel'
+import TerminalLLMInput from './components/TerminalLLMInput'
 
 export default function TerminalPage() {
   const [sessoes, setSessoes] = useState<string[]>(['default'])
@@ -25,6 +27,8 @@ export default function TerminalPage() {
   const [favoritos, setFavoritos] = useState<string[]>([])
   const [modoInput, setModoInput] = useState<'terminal' | 'ia'>('terminal')
   const [sugestaoAutoComplete, setSugestaoAutoComplete] = useState<string | null>(null)
+  const [sidebarAberta, setSidebarAberta] = useState(true)
+
 
   const logs = logsPorSessao[sessaoAtiva] || []
   const setLogs = (fn: (prev: LogBlock[]) => LogBlock[]) => {
@@ -180,22 +184,28 @@ export default function TerminalPage() {
 
   return (
     <div
-      className="grid grid-cols-[4fr_1fr] grid-rows-[1fr] min-h-screen bg-black text-green-400 font-mono"
-      style={{ gridTemplateAreas: `'main sidebar'` }}
+      className={`grid grid-rows-[1fr] h-screen bg-black text-green-400 font-mono transition-all duration-300
+        }`}
+      style={{
+        gridTemplateColumns: sidebarAberta ? '300px 1fr' : '48px 1fr',
+        gridTemplateAreas: `'sidebar main'`,
+      }}
     >
-      {/* Área principal do terminal */}
-      <div style={{ gridArea: 'main' }} className="flex flex-col w-full">
+
+      {/* Área principal */}
+      <div style={{ gridArea: 'main' }} className="flex flex-col w-full justify-center items-center h-screen overflow-y-auto">
+        {/* Abas de sessões */}
         <div className="flex gap-2 p-2 bg-black overflow-x-auto">
           {sessoes.map(s => (
             <div key={s} className="relative group">
               <button
                 onClick={() => setSessaoAtiva(s)}
-                className={`px-2 py-1 text-sm rounded pr-12 transition duration-200 ${s === sessaoAtiva
+                className={`px-2 py-1 text-sm rounded-4xl pr-12 transition duration-200 ${s === sessaoAtiva
                   ? 'bg-zinc-900 text-white'
                   : 'bg-black text-gray-400 hover:bg-zinc-900 hover:text-white'
                   }`}
               >
-                Sessão {s.slice(0, 5)}
+                <Terminal className="inline-block mr-2 w-4 h-4" />
               </button>
               {s !== 'default' && (
                 <button
@@ -210,9 +220,9 @@ export default function TerminalPage() {
                       setSessaoAtiva('default')
                     }
                   }}
-                  className="absolute top-1/2 w-[24px] h-[24px] right-1 -translate-y-1/2 px-1 text-xs text-gray-400 hover:bg-zinc-800 rounded"
+                  className="absolute top-1/2 right-1 -translate-y-1/2 px-1 rounded-4xl group-hover:flex hidden"
                 >
-                  ✕
+                  <X className="w-4 h-4 text-gray-400 hover:text-white" />
                 </button>
               )}
             </div>
@@ -224,14 +234,31 @@ export default function TerminalPage() {
               setSessaoAtiva(novaSessao)
               setLogsPorSessao(prev => ({ ...prev, [novaSessao]: [] }))
             }}
-            className="px-2 py-1 text-sm rounded hover:bg-zinc-900 text-white transition duration-200"
+            className="px-2 py-1 text-sm rounded-4xl hover:bg-zinc-900 text-white transition duration-200"
           >
-            +
+            <Plus className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 pt-4 scrollbar-thin w-full" style={{ paddingBottom: '20vh' }}>
-          <div className="space-y-4">
+        {/* Área de scroll com resposta da IA + logs */}
+        <div className="flex-1 overflow-y-auto px-4 pt-4 pb-2 scrollbar-thin w-full flex justify-center">
+          <div className="relative flex flex-col space-y-4 w-full max-w-4xl min-h-[calc(100vh-10vh)]">
+            {/* Resposta da IA */}
+            {modoInput === 'ia' && (llmResposta || llmSugestao) && (
+              <TerminalLLMOutputPanel
+                llmResposta={llmResposta}
+                llmSugestao={llmSugestao}
+                sugestoesExtras={sugestoesExtras}
+                onExecutar={() => {
+                  if (llmSugestao) sendCommand(llmSugestao)
+                  setLlmSugestao(null)
+                }}
+                onCancelar={() => setLlmSugestao(null)}
+                onEscolherSugestao={setLlmSugestao}
+              />
+            )}
+
+            {/* Logs da sessão */}
             {logs.map(log => (
               <TerminalLog
                 key={log.id}
@@ -243,68 +270,78 @@ export default function TerminalPage() {
                 onFavoritar={handleFavoritar}
               />
             ))}
+
             <div ref={scrollRef}></div>
+            {/* Input do terminal ou da IA fixo ao final da div scrollável */}
+            <div className="sticky bottom-0 bg-black py-2">
+              {modoInput === 'terminal' && (
+                <TerminalInput
+                  cmd={cmd}
+                  cwd={cwd}
+                  onChange={setCmd}
+                  onKeyDown={handleKey}
+                  autoCompleteSugestao={sugestaoAutoComplete}
+                />
+              )}
+              {modoInput === 'ia' && (
+                <TerminalLLMInput
+                  prompt={llmPrompt}
+                  onChange={setLlmPrompt}
+                  onEnviar={enviarPromptLLM}
+                />
+              )}
+            </div>
+
           </div>
         </div>
-
-        {modoInput === 'terminal' && (
-          <div className="fixed bottom-[5vh] left-0 w-[80%] px-4 py-2 bg-black z-40">
-            <TerminalInput
-              cmd={cmd}
-              cwd={cwd}
-              onChange={setCmd}
-              onKeyDown={handleKey}
-              autoCompleteSugestao={sugestaoAutoComplete}
-            />
-          </div>
-        )}
       </div>
 
-      <div style={{ gridArea: 'sidebar' }} className="w-full flex h-screen flex-col overflow-y-auto p-4 scrollbar-thin">
-        <SidebarPanel
-          iaHistorico={historicoIA}
-          favoritos={favoritos}
-          ultimoOutput={logs.at(-1)?.output || ''}
-          cwd={cwd}
-          onExecutar={sendCommand}
-        />
-      </div>
-
-      <div className="fixed bottom-0 left-0 w-[80%]">
-        {modoInput === 'ia' && (
-          <div className="fixed bottom-[5vh] left-0 w-[80%] px-4 py-2 bg-black z-40">
-            <TerminalLLMPanel
-              llmPrompt={llmPrompt}
-              llmResposta={llmResposta}
-              llmSugestao={llmSugestao}
-              sugestoesExtras={sugestoesExtras}
-              onPromptChange={setLlmPrompt}
-              onEnviar={enviarPromptLLM}
-              onExecutar={() => {
-                if (llmSugestao) sendCommand(llmSugestao)
-                setLlmSugestao(null)
-              }}
-              onCancelar={() => setLlmSugestao(null)}
-              onEscolherSugestao={setLlmSugestao}
-            />
-          </div>
-        )}
-
-        <div className="h-[5vh] w-full bg-black flex items-center gap-2 px-4 z-50">
+      {/* Sidebar sempre visível, alternando entre minimizada e expandida */}
+      <div
+        style={{ gridArea: 'sidebar' }}
+        className={`relative h-screen overflow-y-auto scrollbar-thin bg-black transition-all duration-300 flex flex-col ${sidebarAberta ? 'w-full' : 'w-12'
+          }`}
+      >
+        {/* Botão no topo da sidebar */}
+        <div className="absolute top-0 right-0 p-2 z-50">
           <button
-            className={`px-3 py-1 rounded text-sm ${modoInput === 'terminal' ? 'bg-zinc-700 text-white' : 'bg-black text-gray-400 hover:bg-gray-800'}`}
+            onClick={() => setSidebarAberta(prev => !prev)}
+            className="text-gray-400 hover:text-white transition p-2 rounded-4xl"
+          >
+            <LayoutPanelLeft className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Conteúdo visível só quando expandida */}
+        {sidebarAberta && (
+          <SidebarPanel
+            iaHistorico={historicoIA}
+            favoritos={favoritos}
+            ultimoOutput={logs.at(-1)?.output || ''}
+            cwd={cwd}
+            onExecutar={sendCommand}
+          />
+        )}
+      </div>
+
+      {/* Barra de modos fixa no rodapé */}
+      <div className="fixed bottom-0 left-0 w-[80%]">
+        <div className="h-[5vh] w-full bg-transparent flex items-center gap-2 px-4 z-50">
+          <button
+            className={`px-3 py-1 rounded-4xl text-sm ${modoInput === 'terminal' ? 'bg-zinc-700 text-white' : 'bg-black text-gray-400 hover:bg-gray-800'}`}
             onClick={() => setModoInput('terminal')}
           >
-            Terminal
+            <Terminal className="w-5 h-5" />
           </button>
           <button
-            className={`px-3 py-1 rounded text-sm ${modoInput === 'ia' ? 'bg-zinc-700 text-white' : 'bg-black text-gray-400 hover:bg-gray-800'}`}
+            className={`px-3 py-1 rounded-4xl text-sm ${modoInput === 'ia' ? 'bg-zinc-700 text-white' : 'bg-black text-gray-400 hover:bg-gray-800'}`}
             onClick={() => setModoInput('ia')}
           >
-            IA
+            <BrainCog className="w-5 h-5" />
           </button>
         </div>
       </div>
     </div>
   )
+
 }

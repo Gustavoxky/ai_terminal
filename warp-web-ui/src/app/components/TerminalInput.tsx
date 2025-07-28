@@ -14,7 +14,7 @@ export default function TerminalInput({ cmd, cwd, onChange, onKeyDown, autoCompl
             <div className="relative flex-1">
                 <input
                     type="text"
-                    className="w-full bg-transparent outline-none relative z-10 text-green-400"
+                    className="w-3xl bg-transparent outline-none relative z-10 text-green-400"
                     value={cmd}
                     onChange={(e) => onChange(e.target.value)}
                     onKeyDown={onKeyDown}

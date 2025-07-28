@@ -4,3 +4,9 @@ export interface LogBlock {
     output: string
     timestamp: string
 }
+
+export interface RespostaLLM {
+    texto: string;
+    sugestao?: string | null;
+    extras?: string[];
+}
